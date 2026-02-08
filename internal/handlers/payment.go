@@ -48,16 +48,16 @@ func InitiateMpesaPayment(c *gin.Context) {
 		return
 	}
 
-	// Check M-Pesa client is initialized
-	if mpesaClient == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "M-Pesa client not initialized"})
-		return
-	}
-
-	// Bind request
+	// Bind and validate request
 	var req models.MpesaPaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check M-Pesa client is initialized
+	if mpesaClient == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "M-Pesa client not initialized"})
 		return
 	}
 

@@ -51,12 +51,17 @@ func (m *MockOrderRepository) GetAllOrders(ctx context.Context, page int, limit 
 
 func (m *MockOrderRepository) GetOrderCountByUser(ctx context.Context, userID string) (int64, error) {
 	args := m.Called(ctx, userID)
-	return int64(args.Int(0)), args.Error(1)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (m *MockOrderRepository) GetOrderCount(ctx context.Context) (int64, error) {
 	args := m.Called(ctx)
-	return int64(args.Int(0)), args.Error(1)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockOrderRepository) UpdateOrderStatus(ctx context.Context, orderID string, status string) error {
+	args := m.Called(ctx, orderID, status)
+	return args.Error(0)
 }
 
 // MockInvoiceRepository mocks the invoice repository
@@ -200,7 +205,7 @@ func (m *MockProductRepository) DeleteProduct(ctx context.Context, productID str
 
 func (m *MockProductRepository) GetProductCount(ctx context.Context) (int64, error) {
 	args := m.Called(ctx)
-	return int64(args.Int(0)), args.Error(1)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // MockPaymentRepository mocks the payment repository
