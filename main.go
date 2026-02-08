@@ -40,6 +40,11 @@ func main() {
 
 	auth.StartTokenCleanupRoutine(1 * time.Hour)
 
+	// Initialize M-Pesa client (optional, only if credentials are provided)
+	if err := handlers.InitMpesaClient(); err != nil {
+		log.Printf("Warning: M-Pesa client not initialized: %v", err)
+	}
+
 	router := gin.Default()
 	public := router.Group("/api/v1/auth")
 	{
@@ -69,6 +74,10 @@ func main() {
 		// Invoices (user)
 		protected.GET("/invoices/:id", handlers.GetInvoice)
 		protected.GET("/orders/:id/invoice", handlers.GetInvoiceByOrder)
+
+		// Payments (user)
+		protected.POST("/orders/:id/pay", handlers.InitiateMpesaPayment)
+		protected.GET("/payments/:id/status", handlers.GetPaymentStatus)
 	}
 
 	// Admin product routes (protected + admin role)
@@ -95,6 +104,9 @@ func main() {
 		adminInvoices.GET("", handlers.AdminListInvoices)
 		adminInvoices.PUT("/:id/payment", handlers.AdminRecordPayment)
 	}
+
+	// M-Pesa callback route (public)
+	router.POST("/api/v1/mpesa/callback", handlers.HandleMpesaCallback)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
