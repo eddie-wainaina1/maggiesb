@@ -34,3 +34,26 @@ type RecordPaymentRequest struct {
 	Amount float64 `json:"amount" binding:"required,gt=0"`
 	Date   string  `json:"date" binding:"required"` // YYYY-MM-DD format
 }
+
+// ReverseInvoiceRequest is used by admin to request a manual reversal/refund
+type ReverseInvoiceRequest struct {
+	// If Amount is zero, reverse entire paid amount
+	Amount   float64 `json:"amount" binding:"gte=0"`
+	Date     string  `json:"date"`                             // optional YYYY-MM-DD
+	Phone    string  `json:"phone"`                            // customer phone for M-Pesa reversal (optional)
+	UseMpesa bool    `json:"useMpesa"`                         // attempt M-Pesa reversal when true
+	Reason   string  `json:"reason" binding:"required"`       // reason for reversal
+}
+
+// ReversalRecord represents an audit record for a refund/reversal
+type ReversalRecord struct {
+	ID        string    `json:"id" bson:"_id"`
+	InvoiceID string    `json:"invoiceId" bson:"invoiceId"`
+	Amount    float64   `json:"amount" bson:"amount"`
+	Date      string    `json:"date" bson:"date"` // YYYY-MM-DD
+	Phone     string    `json:"phone" bson:"phone"`
+	AdminID   string    `json:"adminId" bson:"adminId"`
+	Reason    string    `json:"reason" bson:"reason"`
+	ReceiptURL string   `json:"receiptUrl,omitempty" bson:"receiptUrl,omitempty"`
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+}

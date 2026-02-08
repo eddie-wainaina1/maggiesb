@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"fmt"
 
-	"github.com/eddie-wainaina1/maggiesb/internal/database"
 	"github.com/eddie-wainaina1/maggiesb/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -27,8 +26,8 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	productRepo := database.NewProductRepository()
-	orderRepo := database.NewOrderRepository()
+	productRepo := NewProductRepository
+	orderRepo := NewOrderRepository
 
 	// Build order items and calculate cost/discounts
 	var items []models.OrderItem
@@ -99,7 +98,7 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	// Create corresponding invoice
-	invoiceRepo := database.NewInvoiceRepository()
+	invoiceRepo := NewInvoiceRepository
 	invoice := &models.Invoice{
 		ID:            uuid.New().String(),
 		OrderID:       order.ID,
@@ -127,7 +126,7 @@ func GetOrder(c *gin.Context) {
 		return
 	}
 
-	orderRepo := database.NewOrderRepository()
+	orderRepo := NewOrderRepository
 	order, err := orderRepo.GetOrderByID(context.Background(), orderID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -158,7 +157,7 @@ func ListOrders(c *gin.Context) {
 		return
 	}
 
-	orderRepo := database.NewOrderRepository()
+	orderRepo := NewOrderRepository
 	orders, err := orderRepo.GetOrdersByUser(context.Background(), userID.(string), page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve orders"})

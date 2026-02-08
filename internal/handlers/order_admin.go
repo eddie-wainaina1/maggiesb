@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"time"
 
-	"github.com/eddie-wainaina1/maggiesb/internal/database"
 	"github.com/eddie-wainaina1/maggiesb/internal/models"
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func AdminListOrders(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	orderRepo := database.NewOrderRepository()
+	orderRepo := NewOrderRepository
 	orders, err := orderRepo.GetAllOrders(context.Background(), page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve orders"})
@@ -52,7 +52,7 @@ func AdminUpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
-	orderRepo := database.NewOrderRepository()
+	orderRepo := NewOrderRepository
 	if err := orderRepo.UpdateOrderStatus(context.Background(), orderID, s); err != nil {
 		if err.Error() == "order not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
@@ -67,6 +67,21 @@ func AdminUpdateOrderStatus(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve updated order"})
 		return
+	}
+
+	// If order was cancelled or returned, and invoice is payable with paid amount,
+	// reverse recorded payments and mark payment records as reversed.
+	if s == models.OrderStatusCancelled || s == models.OrderStatusReturned {
+	invoiceRepo := NewInvoiceRepository
+		invoice, err := invoiceRepo.GetInvoiceByOrderID(context.Background(), orderID)
+		if err == nil && invoice.Type == models.InvoiceTypePayable && invoice.PaidAmount > 0 {
+			// Reverse invoice payments (clears paid amounts and marks invoice receivable)
+			_ = invoiceRepo.ReverseAllPayments(context.Background(), invoice.ID, time.Now().Format("2006-01-02"))
+
+			// Mark payment records as reversed
+			paymentRepo := NewPaymentRepository
+			_ = paymentRepo.ReversePaymentsByInvoiceID(context.Background(), invoice.ID)
+		}
 	}
 
 	c.JSON(http.StatusOK, order)

@@ -2,11 +2,16 @@ package mpesa
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -24,6 +29,12 @@ type Config struct {
 	PassKey           string
 	CallbackURL       string
 	Environment       string // "sandbox" or "production"
+	// Reversal / initiator settings (optional)
+	InitiatorName     string // API initiator username
+	InitiatorPassword string // plain initiator password (will be encrypted using Safaricom public key)
+	PublicKeyPath     string // path to Safaricom public cert (PEM)
+	ReversalResultURL string // result callback URL for reversal
+	ReversalTimeoutURL string // timeout callback URL for reversal
 }
 
 // Client handles M-Pesa API interactions
@@ -178,6 +189,108 @@ func (c *Client) InitiateSTKPush(phone, amount, invoiceID string) (*STKPushRespo
 	}
 
 	return &stkResp, nil
+}
+
+// InitiateReversal attempts to call M-Pesa transaction reversal endpoint.
+// Note: Producing a valid SecurityCredential (encrypted initiator password)
+// is required for production; this method acts as a scaffold and will return
+// an error if SecurityCredential is not set in Config (not implemented).
+func (c *Client) InitiateReversal(phone, amount, invoiceID string) error {
+	// Validate required reversal config
+	if c.config.InitiatorName == "" || c.config.InitiatorPassword == "" || c.config.PublicKeyPath == "" {
+		return fmt.Errorf("mpesa reversal not configured: missing initiator or public key")
+	}
+
+	// Encrypt initiator password using Safaricom public key to produce SecurityCredential
+	secCred, err := c.encryptSecurityCredential(c.config.InitiatorPassword)
+	if err != nil {
+		return fmt.Errorf("failed to generate SecurityCredential: %w", err)
+	}
+
+	token, err := c.GetAccessToken()
+	if err != nil {
+		return fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	// Build reversal payload according to M-Pesa Transaction Reversal API
+	payload := map[string]string{
+		"Initiator":            c.config.InitiatorName,
+		"SecurityCredential":   secCred,
+		"CommandID":            "TransactionReversal",
+		"Amount":               amount,
+		"ReceiverParty":        c.config.BusinessShortCode,
+		"RecieverIdentifierType": "11",
+		"ResultURL":            c.config.ReversalResultURL,
+		"QueueTimeOutURL":      c.config.ReversalTimeoutURL,
+		"Remarks":              "Reversal for invoice " + invoiceID,
+		"Occasion":             invoiceID,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal reversal payload: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/mpesa/reversal/v1/request", c.baseURL)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create reversal request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send reversal request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read reversal response: %w", err)
+	}
+
+	// Try to parse response and detect errors
+	var respMap map[string]interface{}
+	if err := json.Unmarshal(body, &respMap); err == nil {
+		if _, ok := respMap["errorMessage"]; ok {
+			return fmt.Errorf("mpesa reversal error: %v", respMap["errorMessage"])
+		}
+	}
+
+	return nil
+}
+
+// encryptSecurityCredential encrypts the initiator password using the provided
+// Safaricom public key (PEM) and returns base64 encoded ciphertext.
+func (c *Client) encryptSecurityCredential(secret string) (string, error) {
+	pemBytes, err := os.ReadFile(c.config.PublicKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read public key: %w", err)
+	}
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return "", fmt.Errorf("invalid public key PEM file")
+	}
+
+	pubIface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	pub, ok := pubIface.(*rsa.PublicKey)
+	if !ok {
+		return "", fmt.Errorf("public key is not RSA")
+	}
+
+	encrypted, err := rsa.EncryptPKCS1v15(rand.Reader, pub, []byte(secret))
+	if err != nil {
+		return "", fmt.Errorf("rsa encryption failed: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
 // generatePassword generates M-Pesa password

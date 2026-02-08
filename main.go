@@ -38,6 +38,9 @@ func main() {
 		log.Fatalf("Failed to create indexes: %v", err)
 	}
 
+	// Initialize DI repositories
+	handlers.InitDependencies()
+
 	auth.StartTokenCleanupRoutine(1 * time.Hour)
 
 	// Initialize M-Pesa client (optional, only if credentials are provided)
@@ -103,6 +106,7 @@ func main() {
 	{
 		adminInvoices.GET("", handlers.AdminListInvoices)
 		adminInvoices.PUT("/:id/payment", handlers.AdminRecordPayment)
+		adminInvoices.PUT("/:id/reverse", handlers.AdminReverseInvoice)
 	}
 
 	// M-Pesa callback route (public)

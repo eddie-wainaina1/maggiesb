@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/eddie-wainaina1/maggiesb/internal/auth"
-	"github.com/eddie-wainaina1/maggiesb/internal/database"
 	"github.com/eddie-wainaina1/maggiesb/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,7 +21,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	userRepo := database.NewUserRepository()
+	userRepo := NewUserRepository
 
 	// Check if user already exists
 	exists, err := userRepo.UserExists(context.Background(), req.Email)
@@ -88,7 +87,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	userRepo := database.NewUserRepository()
+	userRepo := NewUserRepository
 
 	// Find user by email
 	user, err := userRepo.FindUserByEmail(context.Background(), req.Email)
@@ -134,7 +133,7 @@ func GetProfile(c *gin.Context) {
 		return
 	}
 
-	userRepo := database.NewUserRepository()
+	userRepo := NewUserRepository
 
 	user, err := userRepo.FindUserByID(context.Background(), userID.(string))
 	if err != nil {

@@ -20,13 +20,20 @@ type BlacklistedToken struct {
 }
 
 type TokenRepository struct {
-	collection *mongo.Collection
+	collection Collection
 }
 
 // NewTokenRepository creates a new token repository
 func NewTokenRepository() *TokenRepository {
 	return &TokenRepository{
-		collection: GetCollection(DBName, TokensCollectionName),
+		collection: NewMongoCollection(GetCollection(DBName, TokensCollectionName)),
+	}
+}
+
+// NewTokenRepositoryWithCollection creates a token repository with custom collection (for testing)
+func NewTokenRepositoryWithCollection(c Collection) *TokenRepository {
+	return &TokenRepository{
+		collection: c,
 	}
 }
 

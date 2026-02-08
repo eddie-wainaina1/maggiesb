@@ -515,6 +515,17 @@ go build -o bin/maggiesb main.go
 ```
 
 - [ ] Refund/reversal handling
+- [x] Refund/reversal handling (admin manual reversal endpoint: `PUT /api/v1/admin/invoices/:id/reverse`)
 - [ ] Payment webhook retry logic
 - [ ] Admin payment analytics dashboard
 - [ ] Email notifications for payments
+- [x] Refund/reversal handling implemented (DB + admin endpoint)
+- [ ] Payment webhook retry logic
+- [ ] Admin payment analytics dashboard
+- [ ] Email notifications for payments
+
+Admin reversal notes:
+
+- Endpoint: `PUT /api/v1/admin/invoices/:id/reverse` (admin only)
+- Payload: `ReverseInvoiceRequest` — fields: `amount`, `date` (YYYY-MM-DD), `phone`, `useMpesa`, `reason`.
+- To enable automatic M-Pesa reversal, set these env vars: `MPESA_INITIATOR_NAME`, `MPESA_INITIATOR_PASSWORD`, `MPESA_PUBLIC_KEY_PATH`, and `MPESA_CALLBACK_URL`/`MPESA_REVERSAL_RESULT_URL`/`MPESA_REVERSAL_TIMEOUT_URL` as needed.

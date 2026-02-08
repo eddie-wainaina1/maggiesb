@@ -53,4 +53,38 @@ func TestTokenRepository_BlacklistAndCleanup(t *testing.T) {
 	if isBlacklisted {
 		t.Fatalf("expected expired token to be cleaned up")
 	}
+
+	// Test with no expired tokens
+	if err := repo.CleanupExpiredTokens(ctx); err != nil {
+		t.Fatalf("CleanupExpiredTokens empty error: %v", err)
+	}
+
+	repo.collection.DeleteMany(ctx, map[string]interface{}{})
+}
+
+func TestTokenRepository_IsTokenBlacklisted_NonExistent(t *testing.T) {
+	uri := os.Getenv("MONGO_TEST_URI")
+	if uri == "" {
+		t.Skip("MONGO_TEST_URI not set; skipping token repository tests")
+	}
+
+	if err := InitMongo(uri); err != nil {
+		t.Fatalf("InitMongo error: %v", err)
+	}
+	defer DisconnectMongo()
+
+	repo := NewTokenRepository()
+	ctx := context.Background()
+	repo.collection.DeleteMany(ctx, map[string]interface{}{})
+
+	// Test checking nonexistent token
+	notBlacklisted, err := repo.IsTokenBlacklisted(ctx, "nonexistent-token-xyz")
+	if err != nil {
+		t.Fatalf("IsTokenBlacklisted nonexistent error: %v", err)
+	}
+	if notBlacklisted {
+		t.Fatalf("expected nonexistent token to not be blacklisted")
+	}
+
+	repo.collection.DeleteMany(ctx, map[string]interface{}{})
 }

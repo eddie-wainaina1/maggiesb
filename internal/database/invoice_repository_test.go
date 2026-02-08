@@ -111,3 +111,82 @@ func TestInvoiceRepository_RecordPayment(t *testing.T) {
 	// cleanup
 	repo.collection.DeleteMany(ctx, map[string]interface{}{})
 }
+
+func TestInvoiceRepository_GetInvoicesByType_And_Count(t *testing.T) {
+	uri := os.Getenv("MONGO_TEST_URI")
+	if uri == "" {
+		t.Skip("MONGO_TEST_URI not set; skipping invoice repository tests")
+	}
+
+	if err := InitMongo(uri); err != nil {
+		t.Fatalf("InitMongo error: %v", err)
+	}
+	defer DisconnectMongo()
+
+	repo := NewInvoiceRepository()
+	ctx := context.Background()
+
+	// cleanup
+	repo.collection.DeleteMany(ctx, map[string]interface{}{})
+
+	// Create payable invoices
+	for i := 0; i < 3; i++ {
+		invoice := &models.Invoice{
+			ID:            "inv-payable-" + string(rune(48+i)),
+			OrderID:       "order-pay-" + string(rune(48+i)),
+			InvoiceAmount: 100.0,
+			PaidAmount:    0,
+			TaxAmount:     0,
+			Type:          models.InvoiceTypePayable,
+			PaidOn:        make(map[string]float64),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+		repo.CreateInvoice(ctx, invoice)
+	}
+
+	// Create receivable invoices
+	for i := 0; i < 2; i++ {
+		invoice := &models.Invoice{
+			ID:            "inv-recv-" + string(rune(48+i)),
+			OrderID:       "order-recv-" + string(rune(48+i)),
+			InvoiceAmount: 50.0,
+			PaidAmount:    50.0,
+			TaxAmount:     0,
+			Type:          models.InvoiceTypeReceivable,
+			PaidOn:        map[string]float64{"2026-02-08": 50.0},
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+		}
+		repo.CreateInvoice(ctx, invoice)
+	}
+
+	// Test GetInvoicesByType
+	payables, err := repo.GetInvoicesByType(ctx, models.InvoiceTypePayable, 1, 10)
+	if err != nil {
+		t.Fatalf("GetInvoicesByType payable error: %v", err)
+	}
+	if len(payables) < 3 {
+		t.Fatalf("expected at least 3 payable invoices, got %d", len(payables))
+	}
+
+	receivables, err := repo.GetInvoicesByType(ctx, models.InvoiceTypeReceivable, 1, 10)
+	if err != nil {
+		t.Fatalf("GetInvoicesByType receivable error: %v", err)
+	}
+	if len(receivables) < 2 {
+		t.Fatalf("expected at least 2 receivable invoices, got %d", len(receivables))
+	}
+
+	// Test GetInvoiceCount
+	count, err := repo.GetInvoiceCount(ctx)
+	if err != nil {
+		t.Fatalf("GetInvoiceCount error: %v", err)
+	}
+	if count < 5 {
+		t.Fatalf("expected at least 5 invoices, got %d", count)
+	}
+
+	// cleanup
+	repo.collection.DeleteMany(ctx, map[string]interface{}{})
+}

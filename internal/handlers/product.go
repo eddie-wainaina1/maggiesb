@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eddie-wainaina1/maggiesb/internal/database"
 	"github.com/eddie-wainaina1/maggiesb/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,7 +32,7 @@ func CreateProduct(c *gin.Context) {
 		Discount:    req.Discount,
 	}
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	if err := productRepo.CreateProduct(context.Background(), product); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create product"})
 		return
@@ -46,7 +45,7 @@ func CreateProduct(c *gin.Context) {
 func GetProduct(c *gin.Context) {
 	productID := c.Param("id")
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	product, err := productRepo.GetProductByID(context.Background(), productID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -65,7 +64,7 @@ func ListProducts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	products, err := productRepo.GetAllProducts(context.Background(), page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve products"})
@@ -99,7 +98,7 @@ func SearchProducts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	products, err := productRepo.SearchProducts(context.Background(), query, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search products"})
@@ -144,7 +143,7 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	if err := productRepo.UpdateProduct(context.Background(), productID, updates); err != nil {
 		if err.Error() == "product not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
@@ -163,7 +162,7 @@ func UpdateProduct(c *gin.Context) {
 func DeleteProduct(c *gin.Context) {
 	productID := c.Param("id")
 
-	productRepo := database.NewProductRepository()
+	productRepo := NewProductRepository
 	if err := productRepo.DeleteProduct(context.Background(), productID); err != nil {
 		if err.Error() == "product not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})

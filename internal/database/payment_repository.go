@@ -87,3 +87,22 @@ func (pr *PaymentRepository) UpdatePaymentStatus(ctx context.Context, checkoutID
 
 	return nil
 }
+
+// ReversePaymentsByInvoiceID marks all payment records for an invoice as reversed
+func (pr *PaymentRepository) ReversePaymentsByInvoiceID(ctx context.Context, invoiceID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": bson.M{
+			"status":    "reversed",
+			"updatedAt": time.Now().Format("2006-01-02 15:04:05"),
+		},
+	}
+
+	_, err := pr.collection.UpdateMany(ctx, bson.M{"invoiceId": invoiceID}, update)
+	if err != nil {
+		return fmt.Errorf("failed to mark payments reversed: %w", err)
+	}
+	return nil
+}

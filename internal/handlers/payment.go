@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/eddie-wainaina1/maggiesb/internal/database"
 	"github.com/eddie-wainaina1/maggiesb/internal/models"
 	mpesa "github.com/eddie-wainaina1/maggiesb/internal/payment"
 	"github.com/gin-gonic/gin"
@@ -42,25 +41,28 @@ func InitMpesaClient() error {
 
 // InitiateMpesaPayment initiates an M-Pesa STK Push payment for an invoice
 func InitiateMpesaPayment(c *gin.Context) {
-	if mpesaClient == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "M-Pesa client not initialized"})
-		return
-	}
-
-	var req models.MpesaPaymentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
+	// Check authentication first
 	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
 		return
 	}
 
+	// Check M-Pesa client is initialized
+	if mpesaClient == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "M-Pesa client not initialized"})
+		return
+	}
+
+	// Bind request
+	var req models.MpesaPaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Get invoice
-	invoiceRepo := database.NewInvoiceRepository()
+	invoiceRepo := NewInvoiceRepository
 	invoice, err := invoiceRepo.GetInvoiceByID(context.Background(), req.InvoiceID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -72,7 +74,7 @@ func InitiateMpesaPayment(c *gin.Context) {
 	}
 
 	// Verify user owns the order
-	orderRepo := database.NewOrderRepository()
+	orderRepo := NewOrderRepository
 	order, err := orderRepo.GetOrderByID(context.Background(), invoice.OrderID)
 	if err != nil || order.UserID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
@@ -91,7 +93,7 @@ func InitiateMpesaPayment(c *gin.Context) {
 	}
 
 	// Create payment record
-	paymentRepo := database.NewPaymentRepository()
+	paymentRepo := NewPaymentRepository
 	payment := &models.PaymentRecord{
 		ID:                uuid.New().String(),
 		InvoiceID:         req.InvoiceID,
@@ -124,8 +126,8 @@ func HandleMpesaCallback(c *gin.Context) {
 	}
 
 	stkCallback := callback.Body.StkCallback
-	paymentRepo := database.NewPaymentRepository()
-	invoiceRepo := database.NewInvoiceRepository()
+	paymentRepo := NewPaymentRepository
+	invoiceRepo := NewInvoiceRepository
 
 	// Get payment record
 	payment, err := paymentRepo.GetPaymentByCheckoutRequestID(context.Background(), stkCallback.CheckoutRequestID)

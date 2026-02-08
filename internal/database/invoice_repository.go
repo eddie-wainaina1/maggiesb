@@ -104,6 +104,83 @@ func (ir *InvoiceRepository) RecordPayment(ctx context.Context, invoiceID string
 	return nil
 }
 
+// ReverseAllPayments clears paid amounts on an invoice (used for cancellations/returns)
+func (ir *InvoiceRepository) ReverseAllPayments(ctx context.Context, invoiceID string, reversalDate string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// For safety, ensure invoice exists
+	var inv models.Invoice
+	if err := ir.collection.FindOne(ctx, bson.M{"_id": invoiceID}).Decode(&inv); err != nil {
+		return err
+	}
+
+	// Set PaidAmount to 0, clear PaidOn map, mark invoice as receivable (refund due)
+	update := bson.M{
+		"$set": bson.M{
+			"paidAmount": 0,
+			"paidOn":     map[string]float64{},
+			"type":       models.InvoiceTypeReceivable,
+			"updatedAt":  time.Now(),
+		},
+	}
+
+	result, err := ir.collection.UpdateOne(ctx, bson.M{"_id": invoiceID}, update)
+	if err != nil {
+		return fmt.Errorf("failed to reverse payments: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("invoice not found")
+	}
+
+	return nil
+}
+
+// ReversePaymentAmount deducts a specific amount from the invoice's paid total
+// and records a negative entry in the PaidOn map for the provided date.
+func (ir *InvoiceRepository) ReversePaymentAmount(ctx context.Context, invoiceID string, amount float64, dateStr string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// Ensure invoice exists and get current paid amount
+	var inv models.Invoice
+	if err := ir.collection.FindOne(ctx, bson.M{"_id": invoiceID}).Decode(&inv); err != nil {
+		return err
+	}
+
+	if amount <= 0 {
+		return fmt.Errorf("amount to reverse must be > 0")
+	}
+
+	if amount > inv.PaidAmount {
+		amount = inv.PaidAmount
+	}
+
+	update := bson.M{
+		"$inc": bson.M{
+			"paidAmount": -amount,
+		},
+		"$set": bson.M{
+			fmt.Sprintf("paidOn.%s", dateStr): -amount,
+			"updatedAt": time.Now(),
+		},
+	}
+
+	// If after reversal paidAmount becomes zero, mark invoice receivable
+	if inv.PaidAmount-amount <= 0 {
+		update["$set"].(bson.M)["type"] = models.InvoiceTypeReceivable
+	}
+
+	result, err := ir.collection.UpdateOne(ctx, bson.M{"_id": invoiceID}, update)
+	if err != nil {
+		return fmt.Errorf("failed to reverse payment amount: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("invoice not found")
+	}
+	return nil
+}
+
 // GetInvoicesByType retrieves invoices by type with pagination
 func (ir *InvoiceRepository) GetInvoicesByType(ctx context.Context, invoiceType string, page, limit int) ([]*models.Invoice, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)

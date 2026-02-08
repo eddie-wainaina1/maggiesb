@@ -334,10 +334,10 @@ db.invoices.findOne({ _id: "inv-123" });
 1. **Immediate**: Test with sandbox credentials
 2. **Short-term**: Deploy to staging with Daraja sandbox
 3. **Medium-term**: Implement webhook signature validation
-4. **Long-term**: Add refund/reversal functionality
+4. **Long-term**: Add refund/reversal functionality (implemented — admin manual reversal endpoint available)
 
 ---
 
-**Last Updated**: February 8, 2024
+**Last Updated**: February 8, 2026
 **Status**: Production Ready ✅
 **Version**: 1.0.0
