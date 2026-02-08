@@ -18,6 +18,7 @@ type Collection interface {
 	DeleteMany(ctx context.Context, filter interface{}) (*mongo.DeleteResult, error)
 	CountDocuments(ctx context.Context, filter interface{}) (int64, error)
 	EstimatedDocumentCount(ctx context.Context) (int64, error)
+	Aggregate(ctx context.Context, pipeline interface{}) (*mongo.Cursor, error)
 }
 
 // MongoCollection wraps mongo.Collection to implement Collection interface
@@ -64,4 +65,7 @@ func (mc *MongoCollection) CountDocuments(ctx context.Context, filter interface{
 
 func (mc *MongoCollection) EstimatedDocumentCount(ctx context.Context) (int64, error) {
 	return mc.collection.EstimatedDocumentCount(ctx)
+}
+func (mc *MongoCollection) Aggregate(ctx context.Context, pipeline interface{}) (*mongo.Cursor, error) {
+	return mc.collection.Aggregate(ctx, pipeline)
 }

@@ -86,3 +86,10 @@ func (m *MockCollection) EstimatedDocumentCount(ctx context.Context) (int64, err
 	args := m.Called(ctx)
 	return int64(args.Int(0)), args.Error(1)
 }
+func (m *MockCollection) Aggregate(ctx context.Context, pipeline interface{}) (*mongo.Cursor, error) {
+	args := m.Called(ctx, pipeline)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*mongo.Cursor), args.Error(1)
+}

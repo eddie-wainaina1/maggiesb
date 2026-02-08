@@ -109,6 +109,14 @@ func main() {
 		adminInvoices.PUT("/:id/reverse", handlers.AdminReverseInvoice)
 	}
 
+	// Admin report routes (protected + admin role)
+	adminReports := router.Group("/api/v1/admin/reports")
+	adminReports.Use(middleware.AuthMiddleware(), middleware.RequireRole("admin"))
+	{
+		adminReports.GET("/summary", handlers.AdminGetSummaryReport)
+		adminReports.GET("/daily", handlers.AdminGetDailyBreakdown)
+	}
+
 	// M-Pesa callback route (public)
 	router.POST("/api/v1/mpesa/callback", handlers.HandleMpesaCallback)
 

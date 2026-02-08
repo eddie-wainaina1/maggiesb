@@ -253,3 +253,23 @@ func (m *MockReversalRepository) CreateReversalRecord(ctx context.Context, rever
 	args := m.Called(ctx, reversal)
 	return args.Error(0)
 }
+// MockReportRepository mocks the report repository
+type MockReportRepository struct {
+	mock.Mock
+}
+
+func (m *MockReportRepository) GetSummaryReport(ctx context.Context, startDate, endDate string) (*models.SummaryReport, error) {
+	args := m.Called(ctx, startDate, endDate)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SummaryReport), args.Error(1)
+}
+
+func (m *MockReportRepository) GetDailyBreakdown(ctx context.Context, startDate, endDate string) ([]models.DailySalesReport, error) {
+	args := m.Called(ctx, startDate, endDate)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.DailySalesReport), args.Error(1)
+}

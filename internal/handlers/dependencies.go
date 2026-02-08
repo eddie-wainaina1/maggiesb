@@ -60,6 +60,11 @@ type ReversalRepository interface {
 	CreateReversalRecord(ctx context.Context, record *models.ReversalRecord) error
 }
 
+type ReportRepository interface {
+	GetSummaryReport(ctx context.Context, startDate, endDate string) (*models.SummaryReport, error)
+	GetDailyBreakdown(ctx context.Context, startDate, endDate string) ([]models.DailySalesReport, error)
+}
+
 // DI variables - can be overridden in tests before handlers are called
 var (
 	NewOrderRepository    OrderRepository
@@ -68,6 +73,7 @@ var (
 	NewProductRepository  ProductRepository
 	NewPaymentRepository  PaymentRepository
 	NewReversalRepository ReversalRepository
+	NewReportRepository   ReportRepository
 )
 
 // InitDependencies initializes all repositories (called from main)
@@ -89,5 +95,8 @@ func InitDependencies() {
 	}
 	if NewReversalRepository == nil {
 		NewReversalRepository = database.NewReversalRepository()
+	}
+	if NewReportRepository == nil {
+		NewReportRepository = database.NewReportRepository()
 	}
 }
