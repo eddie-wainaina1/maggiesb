@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor
+node_modules
+
+# Binaries
+bin/
+maggiesb
+
+# Test coverage
+coverage.html
+*.out
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Documentation (optional - remove if you want them in the image)
+*.md
+
+# Build artifacts
+dist/
+build/
